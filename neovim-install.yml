@@ -1,7 +1,7 @@
 ---
 - hosts: all
   vars:
-    user: "wes"
+    user: ""
     nvim_git_repo: "https://github.com/neovim/neovim"
     nvim_install_dependencies:
       - ninja-build
