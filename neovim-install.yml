@@ -1,0 +1,101 @@
+---
+- hosts: all
+  vars:
+    user: "wes"
+    nvim_git_repo: "https://github.com/neovim/neovim"
+    nvim_install_dependencies:
+      - ninja-build
+      - gettext
+      - libtool
+      - libtool-bin
+      - autoconf
+      - automake
+      - cmake 
+      - g++ 
+      - pkg-config
+      - unzip
+      - curl
+      - doxygen
+    nvim_install_root: false
+
+  tasks:
+    - name: "Installing nvim installation dependencies"
+      apt:
+        name: "{{ item }}"
+        state: "present"
+      loop: "{{ nvim_install_dependencies }}"
+      become: "yes"
+    - name: Creates directory
+      file:
+        path: /tmp/neovim-install
+        state: directory
+
+    - name: "Clone neovim github repository"
+      git:
+        repo: "{{ nvim_git_repo }}"
+        dest: /tmp/neovim-install
+        clone: yes
+        update: yes
+         
+    # If user specifies custom directory, then use extra flags
+    - name: "Run make "
+      make:
+        chdir: /tmp/neovim-install/
+          #params:
+          #  CMAKE_EXTRA_FLAGS: "-DCMAKE_INSTALL_PREFIX={{ nvim_install_dest }}"
+      become: "{{ nvim_install_root }}"
+
+    - name: "Run make install"
+      make:
+        target: "install"
+        chdir: /tmp/neovim-install/
+      become: "yes"
+
+    - name: "Removing Temp Directory" 
+      file:
+        path: /tmp/neovim-install/
+        state: "absent"
+    - name: Create neovim directory for autoloading configurations
+      file:
+        path: "/home/{{ user }}/.local/share/nvim/site/autoload/"
+        state: directory
+        recurse: yes
+        mode: 0o700
+        owner: "{{ user }}"
+        group: "{{ user }}"
+      become: yes
+         # become_method: su
+         # become_user: "{{ user }}"
+          #when: neovim_plugins | bool
+
+    - name: Install vim-plug
+      get_url:
+        url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+        dest: "/home/{{ user }}/.local/share/nvim/site/autoload/plug.vim"
+        mode: 0o600
+        owner: "{{ user }}"
+        group: "{{ user }}"
+      become: yes
+          #when: neovim_plugins | bool
+
+    - name: Create base directory for configurations of neovim
+      file:
+        path: "/home/{{ user }}/.config/nvim"
+        state: directory
+        mode: 0o700
+        owner: "{{ user }}"
+        group: "{{ user }}"
+      become: yes
+
+    - name: Configure neovim
+      template:
+        src: init.vim
+        dest: "/home/{{ user }}/.config/nvim/"
+        mode: 0o600
+        owner: "{{ user }}"
+        group: "{{ user }}"
+      become: yes
+
+    - name: Install plugins
+      command: runuser -l {{ user }} -c 'nvim -c "PlugInstall" -c ":qa!"'
+      become: yes
