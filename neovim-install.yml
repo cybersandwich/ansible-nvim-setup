@@ -3,6 +3,7 @@
   vars:
     user: ""
     nvim_git_repo: "https://github.com/neovim/neovim"
+    nvim_config_repo: "https://github.com/cybersandwich/neovim-config"
     nvim_install_dependencies:
       - ninja-build
       - gettext
@@ -87,14 +88,14 @@
         group: "{{ user }}"
       become: yes
 
-    - name: Configure neovim
-      template:
-        src: init.vim
+    - name: "Pulling configuration from github"
+      git:
+        repo: "{{ nvim_config_repo }}"
         dest: "/home/{{ user }}/.config/nvim/"
-        mode: 0o600
-        owner: "{{ user }}"
-        group: "{{ user }}"
+        clone: yes
+        update: yes
       become: yes
+      become_user: "{{ user }}"
 
     - name: Install plugins
       command: runuser -l {{ user }} -c 'nvim -c "PlugInstall" -c ":qa!"'
